@@ -15,8 +15,8 @@ spec:
         app: cluster-app
     spec:
       containers:
-      - name: myapp
-        image: aidanranney/cluster-app:0.0.4
+      - name: cluster-app
+        image: aidanranney/cluster-app:0.0.5
         ports:
         - containerPort: 4000
         env:
@@ -25,3 +25,5 @@ spec:
             secretKeyRef:
               name: cluster-app-secret
               key: key_base
+      imagePullSecrets:
+      - name: myregistrykey
