@@ -17,7 +17,7 @@ defmodule ClusterAppWeb.Router do
   scope "/", ClusterAppWeb do
     pipe_through :browser
 
-    get "/", PageController, :home
+    live "/", HomePageLive
   end
 
   scope "/api", ClusterAppWeb do
