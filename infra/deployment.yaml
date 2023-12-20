@@ -5,7 +5,7 @@ metadata:
   labels:
     app: cluster-app
 spec:
-  replicas: 1
+  replicas: 5
   selector:
     matchLabels:
       app: cluster-app
@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: cluster-app
-        image: aidanranney/cluster-app:0.0.5
+        image: aidanranney/cluster-app:0.0.8
         ports:
         - containerPort: 4000
         env:
@@ -30,5 +30,14 @@ spec:
             configMapKeyRef:
               name: cluster-app-config-map
               key: phx_host
+        - name: DNS_CLUSTER_QUERY
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-app-config-map
+              key: headless_service_dns
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
       imagePullSecrets:
       - name: myregistrykey

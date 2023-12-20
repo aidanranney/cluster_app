@@ -10,6 +10,8 @@ defmodule ClusterApp.Application do
     children = [
       # Start the Telemetry supervisor
       ClusterAppWeb.Telemetry,
+      # Setup for cluster formation
+      {DNSCluster, Application.get_env(:cluster_app, :dns_cluster)},
       # Start the PubSub system
       {Phoenix.PubSub, name: ClusterApp.PubSub},
       # Add Presence on top of PubSub

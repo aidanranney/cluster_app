@@ -4,4 +4,4 @@ metadata:
   name: cluster-app-config-map
 data:
   phx_host: localhost
-
+  headless_service_dns: "cluster-app-headless-service.default.svc.cluster.local" 

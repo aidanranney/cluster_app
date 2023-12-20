@@ -32,8 +32,8 @@ defmodule ClusterApp.MixProject do
   # Type `mix help deps` for examples and options.
   defp deps do
     [
+      {:dns_cluster, "~> 0.1.1"},
       {:faker, "~> 0.17"},
-      {:libcluster, "~> 3.3.3"},
       {:phoenix, "~> 1.7.7"},
       {:phoenix_html, "~> 3.3"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},

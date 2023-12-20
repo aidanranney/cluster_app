@@ -48,6 +48,10 @@ if config_env() == :prod do
     ],
     secret_key_base: secret_key_base
 
+  # Configure DNS query for cluster nodes
+  query = System.get_env("DNS_CLUSTER_QUERY") || :ignore
+  config :cluster_app, :dns_cluster, query: query
+
   # ## SSL Support
   #
   # To get SSL working, you will need to add the `https` key

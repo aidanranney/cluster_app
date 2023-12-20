@@ -26,6 +26,9 @@ config :cluster_app, ClusterAppWeb.Endpoint,
 # at the `config/runtime.exs`.
 config :cluster_app, ClusterApp.Mailer, adapter: Swoosh.Adapters.Local
 
+# Configure DNS query for cluster nodes
+config :cluster_app, :dns_cluster, query: :ignore
+
 # Configure esbuild (the version is required)
 config :esbuild,
   version: "0.17.11",

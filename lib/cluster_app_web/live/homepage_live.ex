@@ -11,9 +11,19 @@ defmodule ClusterAppWeb.HomePageLive do
   def render(assigns) do
     ~H"""
     <div class="w-full">
-      <.async_result :let={user} assign={@anonymous_user}>
-        <%= user.name %> - <%= inspect(Node.self()) %>
-      </.async_result>
+      <div>
+        <.async_result :let={user} assign={@anonymous_user}>
+          <%= user.name %> - <%= inspect(Node.self()) %>
+        </.async_result>
+      </div>
+      <div>
+        <p>Other nodes:</p>
+        <ul>
+          <%= for node <- Node.list() do %>
+            <li><%= inspect(node) %></li>
+          <% end %>
+        </ul>
+      </div>
     </div>
     """
   end
