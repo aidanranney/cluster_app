@@ -12,6 +12,8 @@ defmodule ClusterApp.Application do
       ClusterAppWeb.Telemetry,
       # Start the PubSub system
       {Phoenix.PubSub, name: ClusterApp.PubSub},
+      # Add Presence on top of PubSub
+      ClusterAppWeb.Presence,
       # Start Finch
       {Finch, name: ClusterApp.Finch},
       # Start the Endpoint (http/https)
