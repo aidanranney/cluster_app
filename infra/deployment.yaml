@@ -3,16 +3,16 @@ kind: Deployment
 metadata:
   name: cluster-app-deployment
   labels:
-    app: myapp
+    app: cluster-app
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: myapp
+      app: cluster-app
   template:
     metadata:
       labels:
-        app: myapp
+        app: cluster-app
     spec:
       containers:
       - name: myapp
@@ -23,5 +23,5 @@ spec:
         - name: SECRET_KEY_BASE
           valueFrom:
             secretKeyRef:
-              name: myapp-secret
+              name: cluster-app-secret
               key: key_base
