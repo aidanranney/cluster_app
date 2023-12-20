@@ -25,5 +25,10 @@ spec:
             secretKeyRef:
               name: cluster-app-secret
               key: key_base
+        - name: PHX_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: cluster-app-config-map
+              key: phx_host
       imagePullSecrets:
       - name: myregistrykey
