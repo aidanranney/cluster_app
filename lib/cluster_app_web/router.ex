@@ -24,6 +24,7 @@ defmodule ClusterAppWeb.Router do
     pipe_through :api
 
     post "/hello", HelloController, :hello
+    post "/echo", HelloController, :echo
   end
 
   # Enable LiveDashboard and Swoosh mailbox preview in development
