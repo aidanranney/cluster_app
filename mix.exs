@@ -33,6 +33,7 @@ defmodule ClusterApp.MixProject do
   defp deps do
     [
       {:faker, "~> 0.17"},
+      {:libcluster, "~> 3.3.3"},
       {:phoenix, "~> 1.7.7"},
       {:phoenix_html, "~> 3.3"},
       {:phoenix_live_reload, "~> 1.2", only: :dev},
