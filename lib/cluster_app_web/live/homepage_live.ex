@@ -10,8 +10,9 @@ defmodule ClusterAppWeb.HomePageLive do
     socket =
       if connected?(socket) do
         user = create_anonymous_user()
-        ClusterAppWeb.Endpoint.subscribe("lv:homepage")
-        {:ok, _} = Presence.track(self(), "lv:homepage", user.id, %{user_id: user.id, name: user.name, cursor_x: 0, cursor_y: 0, node: Node.self()})
+        ClusterAppWeb.Endpoint.subscribe(topic())
+        {:ok, _} = Presence.track(self(), topic(), user.id, %{user_id: user.id, name: user.name, cursor_x: 0, cursor_y: 0, node: Node.self()})
+        send(self(), :after_join)
 
         assign(socket, :anonymous_user, user)
       else
@@ -33,12 +34,23 @@ defmodule ClusterAppWeb.HomePageLive do
     {:noreply, socket}
   end
 
+  def handle_info(:after_join, socket) do
+    joined =
+      topic()
+      |> Presence.list()
+
+    users = join_users(socket.assigns.users, joined)
+
+    {:noreply, assign(socket, :users, users)}
+  end
+
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
     <div class="w-full space-y-4">
       <div>
         <p>Current Node - <%= inspect(Node.self()) %></p>
+        <p>Current User - <%= @anonymous_user.name %></p>
       </div>
       <div>
         <p>Other nodes:</p>
@@ -49,7 +61,7 @@ defmodule ClusterAppWeb.HomePageLive do
         </ul>
       </div>
       <div>
-        <p>All Users (including current):</p>
+        <p>Connected users:</p>
         <ul class="space-y-2">
           <%= for user <- @users do %>
             <li><%= user.name %> - <%= inspect(user.node) %></li>
@@ -65,14 +77,17 @@ defmodule ClusterAppWeb.HomePageLive do
   end
 
   defp join_users(users, joins) do
-   joined_users = Enum.flat_map(joins, fn join ->
-    join |> elem(1) |> Map.fetch!(:metas)
-   end)
-
-   Enum.concat(joined_users, users)
+    joins
+    |> Enum.map(fn {_user_id, data} -> data[:metas] |> List.first() |> Map.delete(:phx_ref) end)
+    |> Enum.concat(users)
+    |> Enum.uniq_by(& &1.user_id)
   end
 
   defp leave_users(users, leaves) do
-    Enum.reject(users, & &1.user_id == Map.keys(leaves))
+    ids = Enum.map(leaves, fn {_user_id, data} -> data[:metas] |> List.first() |> Map.fetch!(:user_id) end)
+
+    Enum.reject(users, & &1.user_id in ids)
   end
+
+  defp topic, do: "lv:homepage"
 end
