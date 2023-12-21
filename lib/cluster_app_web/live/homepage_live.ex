@@ -4,14 +4,22 @@ defmodule ClusterAppWeb.HomePageLive do
   alias ClusterApp.AnonymousUser
   alias ClusterAppWeb.Presence
 
-
   @impl Phoenix.LiveView
   def mount(_params, _session, socket) do
     socket =
       if connected?(socket) do
         user = create_anonymous_user()
         ClusterAppWeb.Endpoint.subscribe(topic())
-        {:ok, _} = Presence.track(self(), topic(), user.id, %{user_id: user.id, name: user.name, cursor_x: 0, cursor_y: 0, node: Node.self()})
+
+        {:ok, _} =
+          Presence.track(self(), topic(), user.id, %{
+            user_id: user.id,
+            name: user.name,
+            cursor_x: 0,
+            cursor_y: 0,
+            node: Node.self()
+          })
+
         send(self(), :after_join)
 
         assign(socket, :anonymous_user, user)
@@ -26,8 +34,8 @@ defmodule ClusterAppWeb.HomePageLive do
   def handle_info(%{event: "presence_diff", payload: %{joins: joins, leaves: leaves}}, socket) do
     users =
       socket.assigns.users
-      |> join_users(joins)
       |> leave_users(leaves)
+      |> join_users(joins)
 
     socket = assign(socket, :users, users)
 
@@ -45,9 +53,19 @@ defmodule ClusterAppWeb.HomePageLive do
   end
 
   @impl Phoenix.LiveView
+  def handle_event("move", %{"cursor_x" => cursor_x, "cursor_y" => cursor_y}, socket) do
+    {:ok, _} =
+      Presence.update(self(), topic(), socket.assigns.anonymous_user.id, fn metas ->
+        Map.merge(metas, %{cursor_x: cursor_x, cursor_y: cursor_y})
+      end)
+
+    {:noreply, socket}
+  end
+
+  @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <div class="w-full space-y-4">
+    <div id="cursor-canvas-root" phx-hook="TrackCursorMovement" class="w-full h-screen space-y-4">
       <div>
         <p>Current Node - <%= inspect(Node.self()) %></p>
         <p>Current User - <%= @anonymous_user.name %></p>
@@ -64,7 +82,7 @@ defmodule ClusterAppWeb.HomePageLive do
         <p>Connected users:</p>
         <ul class="space-y-2">
           <%= for user <- @users do %>
-            <li><%= user.name %> - <%= inspect(user.node) %></li>
+            <li><%= user.name %> - <%= inspect(user.node) %></li> - cursor x: <%= user.cursor_x %> - cursor y: <%= user.cursor_y %>
           <% end %>
         </ul>
       </div>
@@ -84,9 +102,12 @@ defmodule ClusterAppWeb.HomePageLive do
   end
 
   defp leave_users(users, leaves) do
-    ids = Enum.map(leaves, fn {_user_id, data} -> data[:metas] |> List.first() |> Map.fetch!(:user_id) end)
+    ids =
+      Enum.map(leaves, fn {_user_id, data} ->
+        data[:metas] |> List.first() |> Map.fetch!(:user_id)
+      end)
 
-    Enum.reject(users, & &1.user_id in ids)
+    Enum.reject(users, &(&1.user_id in ids))
   end
 
   defp topic, do: "lv:homepage"
