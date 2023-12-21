@@ -29,7 +29,17 @@ hooks.TrackCursorMovement = {
     this.el.addEventListener("mousemove", e => {
       ({clientX: x, clientY: y} = e);
       this.pushEvent("move", {cursor_x: x, cursor_y: y});
-    })
+    });
+
+    this.handleEvent("update_cursors", (data) => {
+      Object.entries(data).forEach(([key, attrs]) => {
+        ({cursor_x: x, cursor_y: y} = attrs);
+        cursorEl = document.getElementById(key);
+
+        cursorEl.style.left = `${x}px`
+        cursorEl.style.top = `${y}px`
+      })
+    });
   }
 }
 

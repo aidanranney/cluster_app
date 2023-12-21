@@ -27,17 +27,27 @@ defmodule ClusterAppWeb.HomePageLive do
         assign(socket, :anonymous_user, %AnonymousUser{})
       end
 
-    {:ok, assign(socket, :users, [])}
+    {:ok, assign(socket, :other_users, [])}
   end
 
   @impl Phoenix.LiveView
   def handle_info(%{event: "presence_diff", payload: %{joins: joins, leaves: leaves}}, socket) do
-    users =
-      socket.assigns.users
+    joins = exclude_current_user(joins, socket.assigns.anonymous_user)
+
+    other_users =
+      socket.assigns.other_users
       |> leave_users(leaves)
       |> join_users(joins)
 
-    socket = assign(socket, :users, users)
+    cursor_updates_params = Enum.reduce(other_users, %{}, fn user, acc ->
+      {params, _rest} = Map.split(user, [:cursor_x, :cursor_y])
+      Map.put(acc, user.user_id, params)
+    end)
+
+    socket =
+      socket
+      |> assign(:other_users, other_users)
+      |> push_event("update_cursors", cursor_updates_params)
 
     {:noreply, socket}
   end
@@ -46,10 +56,11 @@ defmodule ClusterAppWeb.HomePageLive do
     joined =
       topic()
       |> Presence.list()
+      |> exclude_current_user(socket.assigns.anonymous_user)
 
-    users = join_users(socket.assigns.users, joined)
+    other_users = join_users(socket.assigns.other_users, joined)
 
-    {:noreply, assign(socket, :users, users)}
+    {:noreply, assign(socket, :other_users, other_users)}
   end
 
   @impl Phoenix.LiveView
@@ -65,24 +76,16 @@ defmodule ClusterAppWeb.HomePageLive do
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <div id="cursor-canvas-root" phx-hook="TrackCursorMovement" class="w-full h-screen space-y-4">
+    <div id="cursor-canvas-root" phx-hook="TrackCursorMovement" class="w-full h-screen bg-blue-100 space-y-4">
       <div>
         <p>Current Node - <%= inspect(Node.self()) %></p>
         <p>Current User - <%= @anonymous_user.name %></p>
       </div>
       <div>
-        <p>Other nodes:</p>
-        <ul>
-          <%= for node <- Node.list() do %>
-            <li><%= inspect(node) %></li>
-          <% end %>
-        </ul>
-      </div>
-      <div>
         <p>Connected users:</p>
         <ul class="space-y-2">
-          <%= for user <- @users do %>
-            <li><%= user.name %> - <%= inspect(user.node) %></li> - cursor x: <%= user.cursor_x %> - cursor y: <%= user.cursor_y %>
+          <%= for user <- @other_users do %>
+            <div id={user.user_id} class="absolute before:content-['👆']" />
           <% end %>
         </ul>
       </div>
@@ -94,20 +97,24 @@ defmodule ClusterAppWeb.HomePageLive do
     struct!(AnonymousUser, %{id: Faker.UUID.v4(), name: Faker.Person.name()})
   end
 
-  defp join_users(users, joins) do
+  defp join_users(other_users, joins) do
     joins
     |> Enum.map(fn {_user_id, data} -> data[:metas] |> List.first() |> Map.delete(:phx_ref) end)
-    |> Enum.concat(users)
+    |> Enum.concat(other_users)
     |> Enum.uniq_by(& &1.user_id)
   end
 
-  defp leave_users(users, leaves) do
+  defp leave_users(other_users, leaves) do
     ids =
       Enum.map(leaves, fn {_user_id, data} ->
         data[:metas] |> List.first() |> Map.fetch!(:user_id)
       end)
 
-    Enum.reject(users, &(&1.user_id in ids))
+    Enum.reject(other_users, &(&1.user_id in ids))
+  end
+
+  defp exclude_current_user(joins, current_user) do
+    Map.reject(joins, fn {user_id, _data} -> user_id == current_user.id end)
   end
 
   defp topic, do: "lv:homepage"
