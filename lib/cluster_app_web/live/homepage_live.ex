@@ -9,8 +9,6 @@ defmodule ClusterAppWeb.HomePageLive do
     socket =
       if connected?(socket) do
         user = create_anonymous_user()
-        ClusterAppWeb.Endpoint.subscribe(topic())
-
         {:ok, _} =
           Presence.track(self(), topic(), user.id, %{
             user_id: user.id,
@@ -20,14 +18,16 @@ defmodule ClusterAppWeb.HomePageLive do
             node: Node.self()
           })
 
-        send(self(), :after_join)
-
         assign(socket, :anonymous_user, user)
       else
         assign(socket, :anonymous_user, %AnonymousUser{})
       end
 
-    {:ok, assign(socket, :other_users, [])}
+    socket = assign(socket, other_users: [], messages: [])
+
+    ClusterAppWeb.Endpoint.subscribe(topic())
+
+    {:ok, socket}
   end
 
   @impl Phoenix.LiveView
@@ -52,15 +52,9 @@ defmodule ClusterAppWeb.HomePageLive do
     {:noreply, socket}
   end
 
-  def handle_info(:after_join, socket) do
-    joined =
-      topic()
-      |> Presence.list()
-      |> exclude_current_user(socket.assigns.anonymous_user)
-
-    other_users = join_users(socket.assigns.other_users, joined)
-
-    {:noreply, assign(socket, :other_users, other_users)}
+  def handle_info(%{event: "received_message", payload: %{user: user, message: message}}, socket) do
+      socket = assign(socket, :messages, ["#{user.name} - #{message}" | socket.assigns.messages])
+    {:noreply, socket}
   end
 
   @impl Phoenix.LiveView
@@ -73,22 +67,32 @@ defmodule ClusterAppWeb.HomePageLive do
     {:noreply, socket}
   end
 
+  def handle_event("submit_message", %{"message" => message}, socket) do
+    ClusterAppWeb.Endpoint.broadcast(topic(), "received_message", %{user: socket.assigns.anonymous_user, message: message})
+
+    {:noreply, socket}
+  end
+
   @impl Phoenix.LiveView
   def render(assigns) do
     ~H"""
-    <div id="cursor-canvas-root" phx-hook="TrackCursorMovement" class="w-full h-screen bg-blue-100 space-y-4">
-      <div>
-        <p>Current Node - <%= inspect(Node.self()) %></p>
-        <p>Current User - <%= @anonymous_user.name %></p>
-      </div>
-      <div>
-        <p>Connected users:</p>
-        <ul class="space-y-2">
-          <%= for user <- @other_users do %>
-            <div id={user.user_id} class="absolute before:content-['👆']" />
-          <% end %>
+    <div id="cursor-canvas-root" phx-hook="TrackCursorMovement" class="absolute left-0 w-full h-full bg-blue-100 space-y-4">
+      <div class="rounded relative mt-12 m-8 p-8 w-72 min-h-20 bg-lime-50">
+        <ul>
+        <%= for message <- @messages do %>
+          <li><%= message %></li>
+        <% end %>
         </ul>
       </div>
+      <.form :let={form} for={%{}} phx-submit="submit_message" class="pl-8 flex gap-x-12">
+        <.input field={form[:message]} />
+        <button class="py-1 px-2 m-4 border border-blue-300 active:ring rounded hover:bg-blue-300 transition" type="submit">Submit Message</button>
+      </.form>
+      <%= for user <- @other_users do %>
+        <div id={user.user_id} class="absolute before:content-['👆']">
+          <p class={"text-#{pick_color()}-200 text-sm font-semibold"}><%= user.name %></p>
+        </div>
+      <% end %>
     </div>
     """
   end
@@ -100,6 +104,7 @@ defmodule ClusterAppWeb.HomePageLive do
   defp join_users(other_users, joins) do
     joins
     |> Enum.map(fn {_user_id, data} -> data[:metas] |> List.first() |> Map.delete(:phx_ref) end)
+    |> Enum.filter(& &1.cursor_x != 0 and &1.cursor_y != 0)
     |> Enum.concat(other_users)
     |> Enum.uniq_by(& &1.user_id)
   end
@@ -118,4 +123,6 @@ defmodule ClusterAppWeb.HomePageLive do
   end
 
   defp topic, do: "lv:homepage"
+
+  defp pick_color, do: Enum.random(["blue", "green", "grey", "red", "yellow"])
 end
