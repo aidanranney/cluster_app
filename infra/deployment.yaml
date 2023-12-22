@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
       - name: cluster-app
-        image: aidanranney/cluster-app:0.1.0
+        image: aidanranney/cluster-app:0.1.2
         ports:
         - containerPort: 4000
         env:
